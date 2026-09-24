@@ -4,3 +4,5 @@ uv.lock
 videos/
 
 __marimo__
+
+*.mp4

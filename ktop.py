@@ -1458,6 +1458,27 @@ def _(frame_vis, jshow):
 
 
 @app.cell
+def _(
+    blur_kernel_ui,
+    max_area_ui,
+    min_area_ui,
+    min_contrast_ui,
+    mo,
+    threshold_sigma_ui,
+):
+    mo.vstack(
+        [
+            blur_kernel_ui,
+            threshold_sigma_ui,
+            min_contrast_ui,
+            min_area_ui,
+            max_area_ui,
+        ]
+    )
+    return
+
+
+@app.cell
 def _(frame, frame_diag, jshow, mo, normalize_to_u8):
     _contrast_vis = (
         normalize_to_u8(
@@ -1545,7 +1566,7 @@ def _(frame_diag, mo):
 
 @app.cell
 def _(frame_pnts):
-    frame_pnts[:20]
+    frame_pnts[0]
     return
 
 
