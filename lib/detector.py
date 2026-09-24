@@ -30,6 +30,15 @@ class ContrastDetectorConfig:
     ktop: int | str = "auto"
     max_auto: int = 100
     close_kernel: int = 3
+    open_kernel: int = 3
+    open_iterations: int = 0
+    close_iterations: int = 1
+
+    # Split merged blobs (e.g. two birds connected by wings) when multiple
+    # contrast peaks exist inside one connected component.
+    split_touching: bool = False
+    peak_min_distance: int = 5
+    peak_threshold_ratio: float = 0.60
 
 
 def to_gray(image: np.ndarray) -> np.ndarray:
@@ -90,6 +99,9 @@ def build_contrast_mask(
     threshold: float,
     border_margin: int,
     close_kernel: int,
+    open_kernel: int = 0,
+    open_iterations: int = 0,
+    close_iterations: int = 1,
 ) -> np.ndarray:
     """Threshold response, mask borders, and close tiny internal gaps."""
     mask = (contrast >= threshold).astype(np.uint8) * 255
@@ -102,15 +114,35 @@ def build_contrast_mask(
         mask[:, :margin] = 0
         mask[:, -margin:] = 0
 
+    open_kernel = int(open_kernel)
+    if open_kernel >= 2 and open_iterations > 0:
+        if open_kernel % 2 == 0:
+            open_kernel += 1
+        kernel = cv.getStructuringElement(
+            cv.MORPH_ELLIPSE,
+            (open_kernel, open_kernel),
+        )
+        mask = cv.morphologyEx(
+            mask,
+            cv.MORPH_OPEN,
+            kernel,
+            iterations=open_iterations,
+        )
+
     close_kernel = int(close_kernel)
-    if close_kernel >= 2:
+    if close_kernel >= 2 and close_iterations > 0:
         if close_kernel % 2 == 0:
             close_kernel += 1
         kernel = cv.getStructuringElement(
             cv.MORPH_ELLIPSE,
             (close_kernel, close_kernel),
         )
-        mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel)
+        mask = cv.morphologyEx(
+            mask,
+            cv.MORPH_CLOSE,
+            kernel,
+            iterations=close_iterations,
+        )
 
     return mask
 
@@ -203,12 +235,54 @@ def validate_candidate(
     return True, None
 
 
+def split_touching_components(
+    mask: np.ndarray,
+    contrast: np.ndarray,
+    min_distance: int,
+    threshold_ratio: float,
+) -> np.ndarray:
+    """Split merged bright/dark blobs using local contrast peaks.
+
+    This handles short occlusions such as two birds whose wings touch.
+    Components with multiple strong peaks are separated by watershed.
+    """
+    distance = cv.distanceTransform(mask, cv.DIST_L2, 5)
+    if distance.max() <= 0:
+        return mask
+
+    peak_mask = cv.dilate(
+        distance,
+        np.ones((2 * min_distance + 1, 2 * min_distance + 1), np.uint8),
+    )
+    peaks = (distance == peak_mask) & (distance > distance.max() * threshold_ratio)
+    n_peaks, markers = cv.connectedComponents(peaks.astype(np.uint8))
+
+    if n_peaks <= 2:
+        return mask
+
+    markers = markers + 1
+    markers[mask == 0] = 0
+    markers = cv.watershed(
+        cv.cvtColor(contrast.astype(np.uint8), cv.COLOR_GRAY2BGR),
+        markers.astype(np.int32),
+    )
+    return (markers > 1).astype(np.uint8) * 255
+
+
 def extract_candidates(
     mask: np.ndarray,
     contrast: np.ndarray,
     config: ContrastDetectorConfig,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
     """Extract contours and split them into accepted and rejected observations."""
+    if config.split_touching:
+        mask = split_touching_components(
+            mask,
+            contrast,
+            config.peak_min_distance,
+            config.peak_threshold_ratio,
+        )
+
     contours, _ = cv.findContours(
         mask,
         cv.RETR_EXTERNAL,
@@ -300,6 +374,9 @@ def detect_contrast_targets(
         threshold,
         config.border_margin,
         config.close_kernel,
+        config.open_kernel,
+        config.open_iterations,
+        config.close_iterations,
     )
 
     candidates, rejected, rejection_counts = extract_candidates(

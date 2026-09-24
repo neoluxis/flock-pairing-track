@@ -55,27 +55,25 @@ def _(cv, mo):
 
 @app.cell
 def _(mo):
-    mo.md(
-        """
-# Matching validation
+    mo.md("""
+    # Matching validation
 
-This notebook validates the two association layers independently of the
-stateful Kalman tracker.
+    This notebook validates the two association layers independently of the
+    stateful Kalman tracker.
 
-```mermaid
-flowchart LR
-    A[Frame t detections] --> B[IoU + Center Distance]
-    C[Frame t+dt detections] --> B
-    B --> D[Hungarian]
+    ```mermaid
+    flowchart LR
+        A[Frame t detections] --> B[IoU + Center Distance]
+        C[Frame t+dt detections] --> B
+        B --> D[Hungarian]
 
-    A --> E[Flock Motion Pairing]
-    C --> E
-    E --> F[Global translation]
-    F --> G[Local KNN + global flock feature]
-    G --> H[Hungarian]
-```
-"""
-    )
+        A --> E[Flock Motion Pairing]
+        C --> E
+        E --> F[Global translation]
+        F --> G[Local KNN + global flock feature]
+        G --> H[Hungarian]
+    ```
+    """)
     return
 
 
@@ -190,12 +188,7 @@ def _(
         validation_curr_frame,
         validation_detector_config,
     )
-    return (
-        validation_curr_detections,
-        validation_curr_diag,
-        validation_prev_detections,
-        validation_prev_diag,
-    )
+    return validation_curr_detections, validation_prev_detections
 
 
 @app.cell
@@ -363,13 +356,18 @@ def _(
 ):
     mo.md(
         f"""
-### Pair summary
+    ### Pair summary
 
-- Previous frame: **{validation_prev_index}** — detections: **{len(validation_prev_detections)}**
-- Current frame: **{validation_curr_index}** — detections: **{len(validation_curr_detections)}**
-- Hybrid pairs: **{len(hybrid_pair_result['matches'])}**
-"""
+    - Previous frame: **{validation_prev_index}** — detections: **{len(validation_prev_detections)}**
+    - Current frame: **{validation_curr_index}** — detections: **{len(validation_curr_detections)}**
+    - Hybrid pairs: **{len(hybrid_pair_result['matches'])}**
+    """
     )
+    return
+
+
+@app.cell
+def _():
     return
 
 

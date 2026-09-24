@@ -41,17 +41,20 @@ class TrackerConfig:
     normal_cost_gate: float = 1.15
 
     # Flock identity-consistency validation for tentative normal matches.
-    local_neighbors: int = 3
-    local_weight: float = 0.65
-    global_weight: float = 0.35
+    local_neighbors: int = 5
+    # Flock geometry is intentionally strong because bird groups keep their
+    # relative configuration over many frames.
+    local_weight: float = 0.85
+    global_weight: float = 0.55
+    flock_motion_weight: float = 0.35
     flock_suspect_gate: float = 0.55
     min_flock_size: int = 3
 
     # Stage-2 flock-assisted re-identification.
     reid_center_weight: float = 0.35
     reid_iou_weight: float = 0.15
-    reid_local_weight: float = 0.35
-    reid_global_weight: float = 0.15
+    reid_local_weight: float = 0.45
+    reid_global_weight: float = 0.30
     reid_max_center_distance: float = 120.0
     reid_cost_gate: float = 1.30
 
@@ -325,6 +328,7 @@ class KalmanTrack:
         self.history.append(
             (int(round(self.state[0, 0])), int(round(self.state[1, 0])))
         )
+        self.identity_confidence = 1.0
 
     @property
     def position(self) -> tuple[float, float]:
@@ -395,6 +399,10 @@ class KalmanTrack:
         self.updated_this_frame = True
         self.association_mode = str(mode)
         self.last_cost = float(cost)
+        if mode == "flock_reid":
+            self.identity_confidence = min(1.0, self.identity_confidence + 0.05)
+        elif mode == "normal":
+            self.identity_confidence = max(0.0, self.identity_confidence - 0.01)
         self.history.append(
             (int(round(self.state[0, 0])), int(round(self.state[1, 0])))
         )
@@ -417,6 +425,7 @@ class KalmanTrack:
             "updated": self.updated_this_frame,
             "association_mode": self.association_mode,
             "association_cost": self.last_cost,
+            "identity_confidence": self.identity_confidence,
             "trajectory": list(self.history),
         }
 

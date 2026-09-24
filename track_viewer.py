@@ -25,8 +25,14 @@ from lib import (
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("video", nargs="?", default="videos/00.mp4")
+    parser.add_argument("video", nargs="?", default="videos/03.mp4")
     parser.add_argument("--start-frame", type=int, default=0)
+    parser.add_argument(
+        "--track-id",
+        type=int,
+        default=None,
+        help="draw only the track with this ID; omit to draw all tracks",
+    )
     parser.add_argument(
         "--output",
         type=str,
@@ -66,7 +72,7 @@ def main():
         blur_kernel=3,
         threshold_sigma=3.0,
         min_mean_contrast=5.0,
-        min_area=2 if args.size <= 640 else 10,
+        min_area=2 if args.size <= 640 else 20,
         max_area=200 if args.size <= 640 else 1500,
         min_width=2 if args.size <= 640 else 4,
         min_height=1 if args.size <= 640 else 2,
@@ -79,9 +85,9 @@ def main():
 
     tracker = HybridFlockTracker(
         TrackerConfig(
-            max_center_distance=80,
-            reid_max_center_distance=120,
-            translation_inlier_radius=45,
+            max_center_distance=80, # 80
+            reid_max_center_distance=120, # 120
+            translation_inlier_radius=45, # 45
         )
     )
 
@@ -154,7 +160,12 @@ def main():
             stream_id=stream_id,
         )
 
-        vis = draw_tracks(frame, tracks)
+        visible_tracks = tracks
+        if args.track_id is not None:
+            visible_tracks = [
+                track for track in tracks if int(track["track_id"]) == args.track_id
+            ]
+        vis = draw_tracks(frame, visible_tracks)
 
         cv.putText(
             vis,
