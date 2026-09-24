@@ -1,0 +1,25 @@
+[project]
+name = "algo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Neolux Lee", email = "neolux_lee@outlook.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "jupyter>=1.1.1",
+    "marimo>=0.24.2",
+    "matplotlib>=3.11.2",
+    "notebook>=7.6.3",
+    "opencv-contrib-python>=5.0.0.93",
+    "opencv-python-headless>=5.0.0.93",
+    "scipy>=1.18.1",
+]
+
+[project.scripts]
+algo = "algo:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"

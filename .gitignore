@@ -1,0 +1,6 @@
+uv.lock
+
+*.pyc
+videos/
+
+__marimo__
